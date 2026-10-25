@@ -255,3 +255,12 @@ Rules:
 - Ne jamais annoncer un compteur sans coller la commande qui le prouve.
 - En cas de blocage ou de décision d'architecture : s'arrêter et me demander.
 - REUSE FIRST : chercher un composant ou hook existant avant d'en créer un. **Dès la 2ᵉ occurrence d'un motif, on extrait** dans `components/shared/` — et la brique est **branchée sur ce 2ᵉ consommateur dans le même lot** : pas de brique créée « au cas où » (règle étendue le 2026-10-18 par l'utilisateur, détails et garde-fous dans `docs/wiki/ui-dialogs.md` §6 ; précedents : `entity-dialog.tsx` et `filter-bar.tsx` = code mort supprimé). Seuil de vivacité : **≥ 3 usages réels**, sinon suppression ou adoption étendue à un site réel — jamais un usage artificiel.
+
+## 🔄 POLITIQUE GIT (décision utilisateur 2026-10-25)
+
+- Identité git configurée (`marwene <marwene@me.com>`), remote `origin` en place (`https://github.com/Marwene/FacturaPro-tn-Bureau.git`), auth par credential helper local (`~/.git-credentials`, hors dépôt) — **NE PLUS REPOSER ces questions à l'utilisateur**.
+- À chaque clôture de lot : le Governor exécute `git add -A` + `git commit` + `git push` **DIRECTEMENT, sans demander l'avis de l'utilisateur** (accord permanent donné le 2026-10-25).
+- Seule exception : l'utilisateur revient sur cet accord explicitement, ou si un push échoue (alors → STOP et remonter).
+- Message de commit : `[lot-<id>] <résumé>` avec référence du prompt/lot.
+- Le scan de secrets avant commit reste obligatoire à chaque fois.
+- Cette politique **remplace** la règle antérieure « Aucun commit sans demande explicite » (énoncée dans `docs/wiki/audit-2026-10-suivi.md` § Règles du chantier) pour tout travail postérieure au 2026-10-25.

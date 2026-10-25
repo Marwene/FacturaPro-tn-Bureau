@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "quotes" ADD COLUMN "devise" TEXT NOT NULL DEFAULT 'TND',
+ADD COLUMN "tauxChange" DECIMAL(10,4),
+ADD COLUMN "montantTND" DECIMAL(19,4);

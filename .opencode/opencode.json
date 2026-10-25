@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "ollama": {
+      "npm": "@ai-sdk/ollama",
+      "options": {
+        "baseUrl": "http://localhost:11434"
+      }
+    }
+  }
+}

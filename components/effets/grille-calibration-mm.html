@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="utf-8">
+    <title>Grille de calibration - Traite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @page {
+            size: A4 landscape;
+            margin: 0;
+        }
+
+        body {
+            width: 297mm;
+            height: 210mm;
+            background: #fff;
+        }
+
+        @media screen {
+            body {
+                padding: 10mm;
+            }
+        }
+
+        .instructions {
+            font-family: Arial, sans-serif;
+            font-size: 10px;
+            padding: 3mm;
+            border-bottom: 1px solid #000;
+        }
+
+        @media print {
+            .instructions {
+                display: none;
+            }
+        }
+
+        svg {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="instructions">
+        <b>Avant d'imprimer :</b> dans la boîte de dialogue d'impression, réglez l'échelle sur <b>100% / Taille
+            réelle</b>
+        (jamais "Ajuster à la page"), marges sur <b>Aucune</b>, et désactivez en-têtes/pieds de page.
+        Vérifiez ensuite avec une règle que 10 carreaux = bien 10 cm sur le papier imprimé avant de continuer.
+    </div>
+
+    <svg width="297mm" height="200mm" viewBox="0 0 297 200" xmlns="http://www.w3.org/2000/svg">
+        <!-- lignes fines tous les 1mm -->
+        <g stroke="#e5e5e5" stroke-width="0.1">
+            <!-- verticales -->
+            <!-- générées ci-dessous via script inline pour éviter 500 lignes manuelles -->
+        </g>
+        <script type="text/javascript">< ![CDATA[
+                (function () {
+                    const svg = document.currentScript.closest('svg');
+                    const W = 297, H = 200;
+                    const ns = "http://www.w3.org/2000/svg";
+                    function line(x1, y1, x2, y2, stroke, width) {
+                        const l = document.createElementNS(ns, "line");
+                        l.setAttribute("x1", x1); l.setAttribute("y1", y1);
+                        l.setAttribute("x2", x2); l.setAttribute("y2", y2);
+                        l.setAttribute("stroke", stroke); l.setAttribute("stroke-width", width);
+                        svg.appendChild(l);
+                    }
+                    function text(x, y, t, size, anchor) {
+                        const el = document.createElementNS(ns, "text");
+                        el.setAttribute("x", x); el.setAttribute("y", y);
+                        el.setAttribute("font-size", size || 2.6);
+                        el.setAttribute("font-family", "Arial, sans-serif");
+                        el.setAttribute("fill", "#c0392b");
+                        el.setAttribute("text-anchor", anchor || "start");
+                        el.textContent = t;
+                        svg.appendChild(el);
+                    }
+                    // grille 1mm
+                    for (let x = 0; x <= W; x++) {
+                        const bold10 = x % 10 === 0;
+                        const bold5 = x % 5 === 0;
+                        line(x, 0, x, H, bold10 ? "#888" : bold5 ? "#bbb" : "#eee", bold10 ? 0.25 : bold5 ? 0.15 : 0.08);
+                    }
+                    for (let y = 0; y <= H; y++) {
+                        const bold10 = y % 10 === 0;
+                        const bold5 = y % 5 === 0;
+                        line(0, y, W, y, bold10 ? "#888" : bold5 ? "#bbb" : "#eee", bold10 ? 0.25 : bold5 ? 0.15 : 0.08);
+                    }
+                    // labels tous les 10mm
+                    for (let x = 0; x <= W; x += 10) { text(x + 0.5, 3, x, 2.4); }
+                    for (let y = 10; y <= H; y += 10) { text(0.5, y - 0.5, y, 2.4); }
+                    // origine
+                    line(0, 0, 8, 0, "#e74c3c", 0.6);
+                    line(0, 0, 0, 8, "#e74c3c", 0.6);
+                    text(1, 7, "0,0 = coin haut-gauche de la traite", 3, "start");
+                })();
+            ]]></script>
+    </svg>
+
+</body>
+
+</html>

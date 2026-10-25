@@ -1,0 +1,388 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-02T00:00:00.000Z",
+  "title": "Design System: FacturaPro TN",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Near-Black",
+        "canonical": "oklch(0.205 0 0)",
+        "tonalRamp": [
+          "oklch(0.145 0 0)",
+          "oklch(0.205 0 0)",
+          "oklch(0.269 0 0)",
+          "oklch(0.371 0 0)",
+          "oklch(0.439 0 0)",
+          "oklch(0.556 0 0)",
+          "oklch(0.708 0 0)",
+          "oklch(0.87 0 0)",
+          "oklch(0.922 0 0)",
+          "oklch(0.97 0 0)"
+        ]
+      },
+      "primary-light": {
+        "role": "neutral",
+        "displayName": "Light Gray",
+        "canonical": "oklch(0.922 0 0)",
+        "tonalRamp": [
+          "oklch(0.708 0 0)",
+          "oklch(0.87 0 0)",
+          "oklch(0.922 0 0)",
+          "oklch(0.97 0 0)",
+          "oklch(0.985 0 0)"
+        ]
+      },
+      "secondary": {
+        "role": "neutral",
+        "displayName": "Cool White",
+        "canonical": "oklch(0.97 0 0)",
+        "tonalRamp": [
+          "oklch(0.922 0 0)",
+          "oklch(0.97 0 0)",
+          "oklch(0.985 0 0)"
+        ]
+      },
+      "secondary-dark": {
+        "role": "neutral",
+        "displayName": "Mid Gray",
+        "canonical": "oklch(0.269 0 0)",
+        "tonalRamp": [
+          "oklch(0.145 0 0)",
+          "oklch(0.205 0 0)",
+          "oklch(0.269 0 0)",
+          "oklch(0.371 0 0)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted Gray",
+        "canonical": "oklch(0.556 0 0)",
+        "tonalRamp": [
+          "oklch(0.439 0 0)",
+          "oklch(0.556 0 0)",
+          "oklch(0.708 0 0)"
+        ]
+      },
+      "destructive": {
+        "role": "destructive",
+        "displayName": "Alert Red",
+        "canonical": "oklch(0.577 0.245 27.325)",
+        "tonalRamp": [
+          "oklch(0.35 0.245 27.325)",
+          "oklch(0.45 0.245 27.325)",
+          "oklch(0.577 0.245 27.325)",
+          "oklch(0.65 0.22 27.325)",
+          "oklch(0.704 0.191 22.216)",
+          "oklch(0.85 0.1 27.325)",
+          "oklch(0.95 0.05 27.325)"
+        ]
+      },
+      "destructive-dark": {
+        "role": "destructive",
+        "displayName": "Soft Red",
+        "canonical": "oklch(0.704 0.191 22.216)",
+        "tonalRamp": [
+          "oklch(0.577 0.245 27.325)",
+          "oklch(0.65 0.22 27.325)",
+          "oklch(0.704 0.191 22.216)",
+          "oklch(0.8 0.12 22.216)",
+          "oklch(0.9 0.06 22.216)"
+        ]
+      },
+      "ring": {
+        "role": "neutral",
+        "displayName": "Ring Gray",
+        "canonical": "oklch(0.708 0 0)",
+        "tonalRamp": [
+          "oklch(0.556 0 0)",
+          "oklch(0.708 0 0)",
+          "oklch(0.87 0 0)"
+        ]
+      },
+      "chart-1": {
+        "role": "chart",
+        "displayName": "Amber",
+        "canonical": "oklch(0.646 0.222 41.116)",
+        "tonalRamp": [
+          "oklch(0.35 0.222 41.116)",
+          "oklch(0.45 0.222 41.116)",
+          "oklch(0.55 0.222 41.116)",
+          "oklch(0.646 0.222 41.116)",
+          "oklch(0.75 0.18 41.116)",
+          "oklch(0.85 0.12 41.116)",
+          "oklch(0.92 0.06 41.116)",
+          "oklch(0.97 0.03 41.116)"
+        ]
+      },
+      "chart-2": {
+        "role": "chart",
+        "displayName": "Teal",
+        "canonical": "oklch(0.6 0.118 184.704)",
+        "tonalRamp": [
+          "oklch(0.3 0.118 184.704)",
+          "oklch(0.4 0.118 184.704)",
+          "oklch(0.5 0.118 184.704)",
+          "oklch(0.6 0.118 184.704)",
+          "oklch(0.7 0.1 184.704)",
+          "oklch(0.8 0.07 184.704)",
+          "oklch(0.9 0.04 184.704)",
+          "oklch(0.96 0.02 184.704)"
+        ]
+      },
+      "chart-3": {
+        "role": "chart",
+        "displayName": "Slate Blue",
+        "canonical": "oklch(0.398 0.07 227.392)",
+        "tonalRamp": [
+          "oklch(0.2 0.07 227.392)",
+          "oklch(0.3 0.07 227.392)",
+          "oklch(0.398 0.07 227.392)",
+          "oklch(0.5 0.06 227.392)",
+          "oklch(0.6 0.05 227.392)",
+          "oklch(0.75 0.03 227.392)",
+          "oklch(0.9 0.015 227.392)",
+          "oklch(0.96 0.008 227.392)"
+        ]
+      },
+      "chart-4": {
+        "role": "chart",
+        "displayName": "Amber Gold",
+        "canonical": "oklch(0.828 0.189 84.429)",
+        "tonalRamp": [
+          "oklch(0.4 0.189 84.429)",
+          "oklch(0.5 0.189 84.429)",
+          "oklch(0.6 0.189 84.429)",
+          "oklch(0.7 0.189 84.429)",
+          "oklch(0.828 0.189 84.429)",
+          "oklch(0.9 0.12 84.429)",
+          "oklch(0.96 0.06 84.429)"
+        ]
+      },
+      "chart-5": {
+        "role": "chart",
+        "displayName": "Warm Gold",
+        "canonical": "oklch(0.769 0.188 70.08)",
+        "tonalRamp": [
+          "oklch(0.35 0.188 70.08)",
+          "oklch(0.45 0.188 70.08)",
+          "oklch(0.55 0.188 70.08)",
+          "oklch(0.65 0.188 70.08)",
+          "oklch(0.769 0.188 70.08)",
+          "oklch(0.85 0.12 70.08)",
+          "oklch(0.93 0.06 70.08)"
+        ]
+      },
+      "sidebar-accent": {
+        "role": "accent",
+        "displayName": "Sidebar Blue",
+        "canonical": "oklch(0.488 0.243 264.376)",
+        "tonalRamp": [
+          "oklch(0.25 0.243 264.376)",
+          "oklch(0.35 0.243 264.376)",
+          "oklch(0.488 0.243 264.376)",
+          "oklch(0.6 0.2 264.376)",
+          "oklch(0.75 0.12 264.376)",
+          "oklch(0.88 0.06 264.376)",
+          "oklch(0.96 0.02 264.376)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Titres de page et en-têtes de module"
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Texte principal, descriptions, contenu de cellules"
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Labels de champs, boutons, badges, navigation"
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Timestamps, métadonnées, hints, statuts"
+      }
+    },
+    "shadows": [
+      {
+        "name": "dropdown",
+        "value": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+        "purpose": "Selects, dropdowns, command palettes — éléments flottants au-dessus du contenu"
+      },
+      {
+        "name": "sheet",
+        "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+        "purpose": "Panels coulissants — séparation marquée du contenu principal"
+      },
+      {
+        "name": "tooltip",
+        "value": "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+        "purpose": "Tooltips, chart tooltips — élément le plus élevé"
+      },
+      {
+        "name": "card-lift",
+        "value": "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
+        "purpose": "Cartes en hover ou état actif — signal subtil d'interaction"
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Easing par défaut pour les transitions d'état"
+      },
+      {
+        "name": "ease-in",
+        "value": "cubic-bezier(0.4, 0, 1, 1)",
+        "purpose": "Easing pour les entrées"
+      },
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0, 0, 0.2, 1)",
+        "purpose": "Easing pour les sorties"
+      },
+      {
+        "name": "duration-fast",
+        "value": "100ms",
+        "purpose": "Dialogs, sheets, popovers — ouverture/fermeture rapide"
+      },
+      {
+        "name": "duration-normal",
+        "value": "150ms",
+        "purpose": "Transitions d'état par défaut (hover, focus)"
+      },
+      {
+        "name": "duration-slow",
+        "value": "200ms",
+        "purpose": "Sheet content, sidebar — transitions de layout"
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" },
+      { "name": "2xl", "value": "1536px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Bouton principal pour les actions primaires (soumettre, sauvegarder, créer)",
+      "html": "<button class=\"ds-btn-primary\">Sauvegarder</button>",
+      "css": ".ds-btn-primary { background: oklch(0.205 0 0); color: oklch(0.922 0 0); padding: 6px 16px; border-radius: 8px; font-family: DM Sans, sans-serif; font-size: 0.875rem; font-weight: 500; border: none; cursor: pointer; transition: outline 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-primary:hover { outline: 3px solid oklch(0.708 0 0 / 0.5); outline-offset: 2px; } .ds-btn-primary:focus-visible { outline: 3px solid oklch(0.708 0 0 / 0.5); outline-offset: 2px; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Bouton secondaire pour les actions alternatives (annuler, fermer)",
+      "html": "<button class=\"ds-btn-outline\">Annuler</button>",
+      "css": ".ds-btn-outline { background: transparent; color: oklch(0.205 0 0); padding: 6px 16px; border-radius: 8px; font-family: DM Sans, sans-serif; font-size: 0.875rem; font-weight: 500; border: 1px solid oklch(0.922 0 0); cursor: pointer; transition: background 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-outline:hover { background: oklch(0.97 0 0); } .ds-btn-outline:focus-visible { outline: 3px solid oklch(0.708 0 0 / 0.5); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Champ de saisie pour texte, nombres, dates",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Saisir...\" />",
+      "css": ".ds-input { background: transparent; color: oklch(0.205 0 0); padding: 6px 12px; border-radius: 8px; font-family: DM Sans, sans-serif; font-size: 0.875rem; font-weight: 400; border: 1px solid oklch(0.922 0 0); height: 32px; width: 100%; transition: border-color 150ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-input:focus { outline: none; border-color: oklch(0.708 0 0); box-shadow: 0 0 0 3px oklch(0.708 0 0 / 0.5); } .ds-input::placeholder { color: oklch(0.556 0 0); } .ds-input:disabled { background: oklch(0.97 0 0); color: oklch(0.556 0 0); cursor: not-allowed; }"
+    },
+    {
+      "name": "Badge",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Badge pour les statuts et étiquettes",
+      "html": "<span class=\"ds-badge\">En attente</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; height: 20px; padding: 2px 8px; border-radius: 9999px; font-family: DM Sans, sans-serif; font-size: 0.75rem; font-weight: 500; background: oklch(0.97 0 0); color: oklch(0.205 0 0); border: 1px solid transparent; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Conteneur pour regrouper du contenu connexe",
+      "html": "<div class=\"ds-card\"><h3 class=\"ds-card-title\">Titre</h3><p class=\"ds-card-content\">Contenu de la carte.</p></div>",
+      "css": ".ds-card { background: oklch(0.985 0 0); border-radius: 10px; padding: 24px; border: 1px solid oklch(0.922 0 0); transition: box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-card:hover { box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); } .ds-card-title { font-family: DM Sans, sans-serif; font-size: 1.125rem; font-weight: 500; line-height: 1.556; margin-bottom: 8px; } .ds-card-content { font-family: DM Sans, sans-serif; font-size: 1rem; font-weight: 400; line-height: 1.5; }"
+    },
+    {
+      "name": "Navigation Item",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Élément de navigation dans la sidebar",
+      "html": "<a class=\"ds-nav-item\" href=\"#\"><svg class=\"ds-nav-icon\"></svg>Dashboard</a>",
+      "css": ".ds-nav-item { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 8px; font-family: DM Sans, sans-serif; font-size: 0.875rem; font-weight: 500; color: oklch(0.556 0 0); text-decoration: none; transition: background 150ms cubic-bezier(0.4, 0, 0.2, 1), color 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-nav-item:hover { background: oklch(0.97 0 0); color: oklch(0.205 0 0); } .ds-nav-item.active { background: oklch(0.97 0 0); color: oklch(0.205 0 0); } .ds-nav-icon { width: 16px; height: 16px; }"
+    },
+    {
+      "name": "Table",
+      "kind": "custom",
+      "refersTo": "table",
+      "description": "Tableau de données pour listes et grilles",
+      "html": "<table class=\"ds-table\"><thead><tr><th>Colonne</th></tr></thead><tbody><tr><td>Valeur</td></tr></tbody></table>",
+      "css": ".ds-table { width: 100%; border-collapse: collapse; font-family: DM Sans, sans-serif; font-size: 0.875rem; } .ds-table th { background: oklch(0.97 0 0); color: oklch(0.556 0 0); font-weight: 500; text-align: left; padding: 8px 12px; border-bottom: 1px solid oklch(0.922 0 0); } .ds-table td { padding: 8px 12px; border-bottom: 1px solid oklch(0.922 0 0); color: oklch(0.205 0 0); } .ds-table tr:hover td { background: oklch(0.97 0 0); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Le Terminal de Confiance",
+    "overview": "FacturaPro TN est un outil de travail sobre et efficace, conçu pour des utilisateurs qui passent des heures chaque jour à gérer factures, stock et trésorerie. L'interface disparaît derrière la productivité : pas de couleur dominante, pas de fioritures, pas de bruit visuel. Chaque élément existe pour une raison fonctionnelle. La palette entièrement neutre (oklch sans chroma) permet à l'information de primer sur le style. Le dark mode et le light mode partagent cette même philosophie : la fonction guide la forme.",
+    "keyCharacteristics": [
+      "Palette entièrement neutre — zéro couleur de marque, tout est灰度",
+      "Typographie DM Sans unique — propre, moderne, sans caractère excessif",
+      "Composants adaptatifs — densité variable selon le contexte",
+      "Ombres structurelles — séparation des couches par élévation légère",
+      "Dark mode natif — même densité, mêmes règles, palette inversée"
+    ],
+    "rules": [
+      {
+        "name": "The No-Brand Rule",
+        "body": "Aucune couleur de marque n'existe dans le système. La palette est un outil neutre qui met en valeur les données, pas une identité visuelle. Toute couleur chromatique ajoutée doit justifier sa fonction.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tonal Layering Rule",
+        "body": "La profondeur est créée par des couches de gris (background → card → popover), pas par des ombres seules. Chaque couche a un ton légèrement différent.",
+        "section": "colors"
+      },
+      {
+        "name": "The Single-Face Rule",
+        "body": "Une seule famille typographique (DM Sans) pour tout le système. Pas de contraste display/body, pas de police d'accent. La lisibilité vient de la hiérarchie, pas de la variété.",
+        "section": "typography"
+      },
+      {
+        "name": "The Dense Label Rule",
+        "body": "Les labels et boutons utilisent font-weight: 500 (medium) pour maintenir la lisibilité dans les interfaces denses sans alourdir le texte.",
+        "section": "typography"
+      },
+      {
+        "name": "The Structural Shadow Rule",
+        "body": "Les ombres ne sont jamais décoratives. Elles signalent une élévation fonctionnelle : dropdown (niveau 1), sheet (niveau 2), tooltip (niveau 3). Pas d'ombre = pas d'élévation.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Tonal Depth Rule",
+        "body": "En dark mode, la profondeur est créée par des couches de gris de plus en plus claires (background → card → popover), pas par des ombres qui seraient invisibles sur fond sombre.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do maintenir la neutralité de la palette — toute couleur chromatique ajoutée doit justifier sa fonction (destructive, chart, statut).",
+      "Do utiliser la tonal layering pour créer la profondeur — background → card → popover, pas des ombres seules.",
+      "Do adapter la densité au contexte — compact pour les tableaux, aéré pour les formulaires.",
+      "Do utiliser le focus ring 3px ring-gray/50 sur tous les éléments interactifs.",
+      "Do respecter la hiérarchie typographique DM Sans — pas de police d'accent, la lisibilité vient du poids et de la taille.",
+      "Do utiliser les ombres structurellement — dropdown (md), sheet (lg), tooltip (xl)."
+    ],
+    "donts": [
+      "Don't ajouter de couleur de marque — le système est intentionnellement neutre.",
+      "Don't utiliser des ombres décoratives — chaque ombre doit signaler une élévation fonctionnelle.",
+      "Don't mélanger les densities — un formulaire aéré dans un tableau dense crée de la confusion.",
+      "Don't ignorer le dark mode — toute modification visuelle doit être testée dans les deux modes.",
+      "Don't utiliser des border-radius incohérents — respecter l'échelle (sm/md/lg/xl/full).",
+      "Don't surcharger les interfaces — la sobriété est une feature, pas un manque de design."
+    ]
+  }
+}

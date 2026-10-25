@@ -1,7 +1,7 @@
 import { PageBanner } from "@/components/shared/page-banner";
 import { Button } from "@/components/ui/button";
 import { InventaireClient } from "@/components/stock/inventaire-client";
-import { Package, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 
 export default function InventairePage() {

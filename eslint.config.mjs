@@ -37,6 +37,35 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    // Audit 2026-10 — Prompt I (lot I0) : seuils de découpage des gros
+    // composants. En "warn" uniquement : le passage en "error" viendra dans un
+    // sous-lot ultérieur une fois la dette résorbée. Compteur brut (pas de
+    // skipBlankLines / skipComments) pour rester cohérent avec les comptages
+    // `wc -l` du prompt I.
+    files: ["components/**/*.tsx"],
+    rules: {
+      "max-lines": ["warn", 250],
+    },
+  },
+  {
+    files: ["hooks/**/*.ts"],
+    rules: {
+      "max-lines": ["warn", 200],
+    },
+  },
+  {
+    files: ["app/**/page.tsx"],
+    rules: {
+      "max-lines": ["warn", 60],
+    },
+  },
+  {
+    files: ["app/api/**/route.ts"],
+    rules: {
+      "max-lines": ["warn", 200],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

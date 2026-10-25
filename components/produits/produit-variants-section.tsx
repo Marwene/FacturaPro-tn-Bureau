@@ -41,7 +41,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-interface VariantFormData {
+export interface VariantFormData {
     id?: string;
     nom: string;
     code: string;

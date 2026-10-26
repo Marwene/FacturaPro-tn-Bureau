@@ -631,6 +631,8 @@
 
 - [2026-09-19] Backend + Frontend (Inventaire) : Système multi-fournisseurs pour les produits — Table ProductSupplier, historique des prix, comparaison fournisseurs, sélection enrichie dans les documents. Fichiers clés : `prisma/schema.prisma`, `app/api/products/[id]/suppliers/`, `components/produits/product-suppliers-section.tsx`, `components/produits/product-supplier-price-history.tsx`, `components/produits/product-supplier-comparison.tsx`, `components/shared/line-items-table.tsx`
 
+- [2026-10-26] Governor (docs-rapports) : **création de `docs/rapports/` + rapport consolidé des modifications 2026-09-19 → 2026-10-25** (112 entrées de changelog + 5 commits git, synthèse tabulaire + highlights + stats). Rapport documentaire uniquement — 0 fichier de code modifié. — fichiers clés : docs/rapports/rapport-modifications-2026-09-19_au_2026-10-25.md, docs/wiki/CHANGELOG.md
+
 ## 2026-09-19 — Backend Agent (inventaire) : API endpoint comparaison prix fournisseurs produit
 
 **Fichiers clés:** `app/api/products/[id]/suppliers/compare/route.ts`

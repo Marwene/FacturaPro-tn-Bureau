@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import type { ColumnDef } from "@tanstack/react-table"
 import { DataTable } from "@/components/data-table"
 import {
   useCartonTypes,
@@ -11,38 +10,17 @@ import {
   type CartonType,
 } from "@/hooks/use-carton-types"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog"
+import { cartonTypeColumns } from "./carton-type-columns"
+import { CartonTypeFormDialog } from "./carton-type-form-dialog"
+import {
+  defaultCartonTypeForm,
+  cartonTypeToForm,
+  parseCartonTypeForm,
+  type CartonTypeForm,
+} from "@/lib/carton-type-form"
 import { notify } from "@/lib/notify"
-import { Boxes, Loader2, Pencil, Plus, Trash2 } from "lucide-react"
-
-interface CartonTypeForm {
-  nom: string
-  capacite: string
-  longueur: string
-  largeur: string
-  hauteur: string
-}
-
-const defaultForm: CartonTypeForm = {
-  nom: "",
-  capacite: "24",
-  longueur: "",
-  largeur: "",
-  hauteur: "",
-}
-
-function dimCell(value: number | null | undefined) {
-  return value ?? "—"
-}
+import { Boxes, Plus } from "lucide-react"
 
 export function CartonTypesManager() {
   const { data, isLoading, isFetching } = useCartonTypes()
@@ -54,26 +32,20 @@ export function CartonTypesManager() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<CartonType | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<CartonType | null>(null)
-  const [form, setForm] = useState<CartonTypeForm>(defaultForm)
+  const [form, setForm] = useState<CartonTypeForm>(defaultCartonTypeForm)
 
   const cartonTypes = data?.cartonTypes ?? []
   const isMutating = create.isPending || update.isPending
 
   function openCreate() {
     setEditing(null)
-    setForm(defaultForm)
+    setForm(defaultCartonTypeForm)
     setDialogOpen(true)
   }
 
   function openEdit(item: CartonType) {
     setEditing(item)
-    setForm({
-      nom: item.nom,
-      capacite: String(item.capacite),
-      longueur: item.longueur?.toString() ?? "",
-      largeur: item.largeur?.toString() ?? "",
-      hauteur: item.hauteur?.toString() ?? "",
-    })
+    setForm(cartonTypeToForm(item))
     setDialogOpen(true)
   }
 
@@ -83,33 +55,13 @@ export function CartonTypesManager() {
   }
 
   function handleSubmit() {
-    const nom = form.nom.trim()
-    const capacite = parseInt(form.capacite, 10)
-    if (!nom) {
-      notify.warning({
-        title: "Nom du type de carton requis",
-        description: "Saisissez un nom pour identifier ce type de carton.",
-      })
+    const result = parseCartonTypeForm(form)
+    if (!result.ok) {
+      notify.warning({ title: result.error.title, description: result.error.description })
       return
     }
-    if (!Number.isFinite(capacite) || capacite < 1) {
-      notify.warning({
-        title: "Capacité invalide",
-        description: "La capacité doit être d'au moins 1 pièce.",
-      })
-      return
-    }
-    const optionalDim = (value: string) => {
-      const trimmed = value.trim()
-      return trimmed === "" ? null : Number(trimmed)
-    }
-    const payload = {
-      nom,
-      capacite,
-      longueur: optionalDim(form.longueur),
-      largeur: optionalDim(form.largeur),
-      hauteur: optionalDim(form.hauteur),
-    }
+    const { payload } = result
+    const nom = payload.nom
 
     if (editing) {
       update.mutate(
@@ -160,69 +112,6 @@ export function CartonTypesManager() {
     })
   }
 
-  const columns: ColumnDef<CartonType>[] = [
-    {
-      accessorKey: "nom",
-      header: "Nom",
-      cell: (info) => <span className="text-sm font-medium">{info.row.original.nom}</span>,
-    },
-    {
-      accessorKey: "capacite",
-      header: "Capacité (pièces)",
-      cell: (info) => <span className="text-sm">{info.row.original.capacite}</span>,
-    },
-    {
-      accessorKey: "longueur",
-      header: "Longueur (mm)",
-      cell: (info) => (
-        <span className="text-sm text-muted-foreground">{dimCell(info.row.original.longueur)}</span>
-      ),
-    },
-    {
-      accessorKey: "largeur",
-      header: "Largeur (mm)",
-      cell: (info) => (
-        <span className="text-sm text-muted-foreground">{dimCell(info.row.original.largeur)}</span>
-      ),
-    },
-    {
-      accessorKey: "hauteur",
-      header: "Hauteur (mm)",
-      cell: (info) => (
-        <span className="text-sm text-muted-foreground">{dimCell(info.row.original.hauteur)}</span>
-      ),
-    },
-    {
-      id: "actions",
-      header: () => <span className="sr-only">Actions</span>,
-      cell: (info) => {
-        const row = info.row.original
-        return (
-          <div className="flex items-center justify-end gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => openEdit(row)}
-              title="Modifier"
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-destructive hover:text-destructive"
-              onClick={() => setDeleteTarget(row)}
-              title="Supprimer"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        )
-      },
-    },
-  ]
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -239,7 +128,7 @@ export function CartonTypesManager() {
       </div>
 
       <DataTable
-        columns={columns}
+        columns={cartonTypeColumns({ onEdit: openEdit, onDelete: setDeleteTarget })}
         data={cartonTypes}
         loading={isFetching || isLoading}
         searchValue={search}
@@ -258,87 +147,15 @@ export function CartonTypesManager() {
         )}
       />
 
-      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog() }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="text-base">
-              {editing ? "Modifier le type de carton" : "Ajouter un type de carton"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="carton-nom" className="text-xs">Nom</Label>
-              <Input
-                id="carton-nom"
-                value={form.nom}
-                onChange={(e) => setForm((f) => ({ ...f, nom: e.target.value }))}
-                placeholder="Ex : Format A9, Format A12..."
-                autoFocus
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="carton-capacite" className="text-xs">Capacité (pièces)</Label>
-                <Input
-                  id="carton-capacite"
-                  type="number"
-                  min={1}
-                  value={form.capacite}
-                  onChange={(e) => setForm((f) => ({ ...f, capacite: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="carton-longueur" className="text-xs">Longueur (mm)</Label>
-                <Input
-                  id="carton-longueur"
-                  type="number"
-                  min={0}
-                  value={form.longueur}
-                  onChange={(e) => setForm((f) => ({ ...f, longueur: e.target.value }))}
-                  placeholder="600"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="carton-largeur" className="text-xs">Largeur (mm)</Label>
-                <Input
-                  id="carton-largeur"
-                  type="number"
-                  min={0}
-                  value={form.largeur}
-                  onChange={(e) => setForm((f) => ({ ...f, largeur: e.target.value }))}
-                  placeholder="400"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="carton-hauteur" className="text-xs">Hauteur (mm)</Label>
-                <Input
-                  id="carton-hauteur"
-                  type="number"
-                  min={0}
-                  value={form.hauteur}
-                  onChange={(e) => setForm((f) => ({ ...f, hauteur: e.target.value }))}
-                  placeholder="300"
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={closeDialog} disabled={isMutating}>Annuler</Button>
-            <Button onClick={handleSubmit} disabled={isMutating}>
-              {isMutating ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Enregistrement...
-                </>
-              ) : editing ? (
-                "Modifier"
-              ) : (
-                "Créer"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CartonTypeFormDialog
+        open={dialogOpen}
+        editing={editing}
+        form={form}
+        onFormChange={setForm}
+        onClose={closeDialog}
+        onSubmit={handleSubmit}
+        isMutating={isMutating}
+      />
 
       <ConfirmDeleteDialog
         open={!!deleteTarget}

@@ -2,33 +2,25 @@
 
 import { useRef, useCallback, useState, useMemo, useLayoutEffect, type WheelEvent, type KeyboardEvent } from "react"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import {
-    Printer,
-    X,
-    ChevronLeft,
-    ChevronRight,
-    AlertTriangle,
-    CheckCircle2,
-    Trash2,
-    ZoomIn,
-    ZoomOut,
-    Maximize2,
-    LayoutGrid,
-} from "lucide-react"
 import type { SerializedEffet } from "@/lib/types"
 import {
     buildLettreScreenPreviewHTML,
     buildLettrePrintOverlayHTML,
     getEffetPrintWarnings,
-    LETTRE_PAGE_WIDTH_MM,
-    LETTRE_PAGE_HEIGHT_MM,
 } from "./lettre-de-change"
-import { MoneyCell } from "@/components/shared/money-cell"
-import { DateCell } from "@/components/shared/date-cell"
-import { cn } from "@/lib/utils"
+import {
+    BASE_WIDTH_PX,
+    BASE_HEIGHT_PX,
+    buildInitialBatch,
+    computeFitScale,
+    pageIndexAfterRemove,
+    previewScale,
+    stepZoomIn,
+    stepZoomOut,
+    sumMontant,
+    zoomFromWheelDelta,
+} from "./apercu-effet-logic"
+import { ApercuEffetRecapPanel, ApercuEffetToolbar } from "./apercu-effet-sections"
 
 interface ApercuEffetDialogProps {
     open: boolean
@@ -40,26 +32,6 @@ interface ApercuEffetDialogProps {
     splitEffets?: SerializedEffet[]
     /** Lot d'un ou plusieurs effets à parcourir/imprimer (nouvel écran d'impression groupée). */
     effets?: SerializedEffet[]
-}
-
-// Dimensions de référence (px CSS) du gabarit de page à l'échelle 100% de
-// zoom "ajusté" — le composant recalcule ensuite un facteur d'échelle pour
-// remplir l'espace disponible, puis applique le zoom utilisateur par-dessus.
-const BASE_WIDTH_PX = 640
-const BASE_HEIGHT_PX = Math.round((BASE_WIDTH_PX * LETTRE_PAGE_HEIGHT_MM) / LETTRE_PAGE_WIDTH_MM)
-
-const ZOOM_MIN = 40
-const ZOOM_MAX = 250
-const ZOOM_STEP = 15
-
-function fieldRow(label: string, value?: React.ReactNode) {
-    if (!value) return null
-    return (
-        <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</span>
-            <span className="text-xs font-medium break-words">{value}</span>
-        </div>
-    )
 }
 
 export function ApercuEffetDialog({
@@ -81,11 +53,10 @@ export function ApercuEffetDialog({
     // Le lot effectif : celui fourni explicitement (écran d'impression groupée),
     // sinon reconstruit depuis l'ancien mode (effet + splitEffets), avec retrait
     // local possible via `batch` (l'utilisateur peut exclure un effet du tirage).
-    const initialBatch = useMemo(() => {
-        if (effetsProp?.length) return effetsProp
-        if (effet) return splitEffets?.length ? [effet, ...splitEffets] : [effet]
-        return []
-    }, [effetsProp, effet, splitEffets])
+    const initialBatch = useMemo(
+        () => buildInitialBatch(effetsProp, effet, splitEffets),
+        [effetsProp, effet, splitEffets],
+    )
 
     const items = batch ?? initialBatch
     const current = items[Math.min(pageIndex, items.length - 1)]
@@ -93,19 +64,21 @@ export function ApercuEffetDialog({
     const removeFromBatch = (id: string) => {
         const next = items.filter((e) => e.id !== id)
         setBatch(next)
-        if (pageIndex >= next.length) setPageIndex(Math.max(0, next.length - 1))
+        const nextIndex = pageIndexAfterRemove(pageIndex, next.length)
+        if (nextIndex !== pageIndex) setPageIndex(nextIndex)
     }
 
     // Recalcule l'échelle "ajustée" (fit-to-screen) à l'ouverture et au
     // redimensionnement de la fenêtre / du panneau latéral.
+    // Justification useEffect : non applicable — ResizeObserver est un système
+    // externe non réactif ; useLayoutEffect permet de mesurer avant peinture.
     useLayoutEffect(() => {
         const el = stageRef.current
         if (!el || !open) return
         const compute = () => {
             const availW = el.clientWidth - 48
             const availH = el.clientHeight - 48
-            const scale = Math.min(availW / BASE_WIDTH_PX, availH / BASE_HEIGHT_PX, 1.6)
-            setFitScale(Math.max(scale, 0.15))
+            setFitScale(computeFitScale(availW, availH))
         }
         compute()
         const ro = new ResizeObserver(compute)
@@ -125,16 +98,16 @@ export function ApercuEffetDialog({
         setZoomPct(100)
     }
 
-    const scale = fitScale * (zoomPct / 100)
+    const scale = previewScale(fitScale, zoomPct)
 
-    const zoomIn = useCallback(() => setZoomPct((z) => Math.min(ZOOM_MAX, z + ZOOM_STEP)), [])
-    const zoomOut = useCallback(() => setZoomPct((z) => Math.max(ZOOM_MIN, z - ZOOM_STEP)), [])
+    const zoomIn = useCallback(() => setZoomPct(stepZoomIn), [])
+    const zoomOut = useCallback(() => setZoomPct(stepZoomOut), [])
     const zoomFit = useCallback(() => setZoomPct(100), [])
 
     const handleWheel = useCallback((e: WheelEvent<HTMLDivElement>) => {
         if (!e.ctrlKey && !e.metaKey) return
         e.preventDefault()
-        setZoomPct((z) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(z - e.deltaY * 0.4))))
+        setZoomPct((z) => zoomFromWheelDelta(z, e.deltaY))
     }, [])
 
     const goPrev = useCallback(() => setPageIndex((i) => Math.max(0, i - 1)), [])
@@ -169,10 +142,8 @@ export function ApercuEffetDialog({
     if (!current) return null
 
     const warnings = getEffetPrintWarnings(current)
-    const isReady = warnings.length === 0
-    const totalMontant = items.reduce((s, e) => s + parseFloat(e.montant || "0"), 0)
+    const totalMontant = sumMontant(items)
     const previewSrcDoc = buildLettreScreenPreviewHTML([current], companyName, showRepères)
-    const zoomPctDisplay = Math.round(zoomPct)
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -184,109 +155,24 @@ export function ApercuEffetDialog({
                     Aperçu — {items.length > 1 ? `${items.length} effets` : current.numero}
                 </DialogTitle>
 
-                {/* Toolbar */}
-                <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b bg-background shrink-0">
-                    {/* Groupe gauche : navigation + identité de l'effet */}
-                    <div className="flex items-center gap-3 text-sm min-w-0">
-                        {items.length > 1 && (
-                            <div className="flex items-center gap-1 shrink-0">
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7"
-                                    disabled={pageIndex === 0}
-                                    onClick={goPrev}
-                                    title="Effet précédent (←)"
-                                >
-                                    <ChevronLeft className="h-4 w-4" />
-                                </Button>
-                                <span className="text-xs text-muted-foreground tabular-nums w-14 text-center">
-                                    {pageIndex + 1} / {items.length}
-                                </span>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7"
-                                    disabled={pageIndex === items.length - 1}
-                                    onClick={goNext}
-                                    title="Effet suivant (→)"
-                                >
-                                    <ChevronRight className="h-4 w-4" />
-                                </Button>
-                                <Separator orientation="vertical" className="h-4 mx-1" />
-                            </div>
-                        )}
-                        <span className="font-semibold truncate">{current.numero}</span>
-                        <span className="text-muted-foreground shrink-0">·</span>
-                        <span className="text-muted-foreground shrink-0"><MoneyCell value={current.montant} /></span>
-                        <span className="text-muted-foreground shrink-0">·</span>
-                        <span className="text-muted-foreground capitalize shrink-0">{current.status.replace(/_/g, " ").toLowerCase()}</span>
-                        {items.length > 1 && (
-                            <>
-                                <span className="text-muted-foreground shrink-0">·</span>
-                                <span className="text-xs text-muted-foreground shrink-0">
-                                    Total lot : <MoneyCell value={totalMontant.toFixed(3)} />
-                                </span>
-                            </>
-                        )}
-                        {isReady ? (
-                            <Badge variant="outline" className="gap-1 shrink-0 border-emerald-200 bg-emerald-50 text-emerald-700">
-                                <CheckCircle2 className="h-3 w-3" /> Prêt à imprimer
-                            </Badge>
-                        ) : (
-                            <Badge variant="destructive" className="gap-1 shrink-0" title={warnings.join(", ")}>
-                                <AlertTriangle className="h-3 w-3" /> {warnings.length} champ(s) manquant(s)
-                            </Badge>
-                        )}
-                    </div>
-
-                    {/* Groupe droit : calage / zoom / actions */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                        <Button
-                            variant={showRepères ? "secondary" : "ghost"}
-                            size="sm"
-                            className="gap-1.5 text-xs h-7"
-                            onClick={() => setShowRepères((v) => !v)}
-                            title="Afficher les cases mesurées du pré-imprimé (calibration)"
-                        >
-                            <LayoutGrid className="h-3.5 w-3.5" /> Repères
-                        </Button>
-
-                        <Separator orientation="vertical" className="h-4 mx-1" />
-
-                        <div className="flex items-center gap-0.5 bg-muted/50 rounded-md p-0.5">
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={zoomOut} title="Zoom arrière (-)">
-                                <ZoomOut className="h-3.5 w-3.5" />
-                            </Button>
-                            <span className="w-11 text-center text-xs tabular-nums select-none">{zoomPctDisplay}%</span>
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={zoomIn} title="Zoom avant (+)">
-                                <ZoomIn className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={zoomFit} title="Ajuster à l'écran (0)">
-                                <Maximize2 className="h-3.5 w-3.5" />
-                            </Button>
-                        </div>
-
-                        <Separator orientation="vertical" className="h-4 mx-1" />
-
-                        {items.length > 1 && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="gap-1.5 text-xs h-7"
-                                onClick={() => removeFromBatch(current.id)}
-                            >
-                                <Trash2 className="h-3.5 w-3.5" /> Retirer du lot
-                            </Button>
-                        )}
-                        <Button variant="default" size="sm" className="gap-1.5 text-xs h-7" onClick={handlePrint}>
-                            <Printer className="h-3.5 w-3.5" /> Imprimer {items.length > 1 ? `(${items.length})` : ""}
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onOpenChange(false)}>
-                            <X className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
+                <ApercuEffetToolbar
+                    current={current}
+                    itemsCount={items.length}
+                    pageIndex={pageIndex}
+                    totalMontant={totalMontant}
+                    warnings={warnings}
+                    showRepères={showRepères}
+                    zoomPct={zoomPct}
+                    onPrev={goPrev}
+                    onNext={goNext}
+                    onToggleRepères={() => setShowRepères((v) => !v)}
+                    onZoomOut={zoomOut}
+                    onZoomIn={zoomIn}
+                    onZoomFit={zoomFit}
+                    onRemoveCurrent={() => removeFromBatch(current.id)}
+                    onPrint={handlePrint}
+                    onClose={() => onOpenChange(false)}
+                />
 
                 {/* Corps : zone de calage (photo du pré-imprimé + données) + panneau récapitulatif */}
                 <div className="flex-1 flex min-h-0">
@@ -323,62 +209,14 @@ export function ApercuEffetDialog({
                         </div>
                     </div>
 
-                    {/* Panneau récapitulatif — vérifier les données sans dépendre du zoom */}
-                    <div className="hidden lg:flex w-72 shrink-0 border-l bg-background flex-col overflow-y-auto">
-                        <div className="px-4 py-3 border-b">
-                            <h3 className="text-sm font-semibold">Récapitulatif</h3>
-                            <p className="text-xs text-muted-foreground">Données qui seront imprimées sur le pré-imprimé</p>
-                        </div>
-                        <div className="p-4 flex flex-col gap-3">
-                            {fieldRow("N° effet", current.numero)}
-                            {fieldRow("Bénéficiaire", current.beneficiaire)}
-                            {fieldRow("Tiré", current.tire)}
-                            {fieldRow("Adresse du tiré", current.tireAdresse)}
-                            {fieldRow("Montant", <MoneyCell value={current.montant} />)}
-                            {fieldRow("Échéance", <DateCell value={current.dateEcheance} />)}
-                            {fieldRow("Date de création", <DateCell value={current.dateCreation} />)}
-                            {fieldRow(
-                                "RIB du tiré",
-                                current.type === "RECU" ? current.tireur?.ribBancaire : current.companyBank?.rib
-                            )}
-                            {fieldRow("Domiciliation", current.companyBank?.nomBanque)}
-                            {fieldRow("Cédant", companyName)}
-                        </div>
-
-                        {!isReady && (
-                            <div className="mx-4 mb-4 mt-1 rounded-md border border-destructive/30 bg-destructive/5 p-3">
-                                <div className="flex items-center gap-1.5 text-xs font-semibold text-destructive mb-1.5">
-                                    <AlertTriangle className="h-3.5 w-3.5" /> À compléter avant impression
-                                </div>
-                                <ul className="text-xs text-destructive/90 list-disc list-inside space-y-0.5">
-                                    {warnings.map((w) => (
-                                        <li key={w}>{w}</li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
-
-                        {items.length > 1 && (
-                            <div className="mx-4 mb-4 rounded-md border p-3">
-                                <div className="text-xs font-semibold mb-2">Lot ({items.length})</div>
-                                <div className="flex flex-col gap-1">
-                                    {items.map((e, i) => (
-                                        <button
-                                            key={e.id}
-                                            onClick={() => setPageIndex(i)}
-                                            className={cn(
-                                                "flex items-center justify-between text-xs rounded px-2 py-1 text-left hover:bg-muted transition-colors",
-                                                i === pageIndex && "bg-muted font-medium"
-                                            )}
-                                        >
-                                            <span className="truncate">{e.numero}</span>
-                                            <MoneyCell value={e.montant} className="text-muted-foreground shrink-0 ml-2" />
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                    <ApercuEffetRecapPanel
+                        current={current}
+                        companyName={companyName}
+                        warnings={warnings}
+                        items={items}
+                        pageIndex={pageIndex}
+                        onSelectPage={setPageIndex}
+                    />
                 </div>
 
                 {/* Hidden print iframe (utilise buildLettrePrintOverlayHTML avec dimensions mm B5) */}

@@ -1,70 +1,19 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { useMemo } from "react"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Trash2, X, Loader2, FileText, User, StickyNote, Calculator } from "lucide-react"
-import { formatCurrency, parseTunisianNumber } from "@/lib/decimal"
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-} from "@/components/ui/combobox"
-import { ProductSelect, buildProductSelectOptions } from "@/components/shared/product-select"
-
-interface Client {
-  id: string
-  raisonSociale: string
-  ville?: string | null
-  matriculeFiscal?: string | null
-}
-
-interface Product {
-  id: string
-  nom: string
-  code?: string
-  prixHT: string
-  prixAchat?: string
-  tauxTVA: string
-  fodec?: boolean
-  tauxFodec?: string
-  suppliers?: Array<{
-    supplierName: string
-    supplierId: string
-    purchasePrice: string | number
-    productSupplierId: string
-    isDefault?: boolean
-  }>
-}
-
-interface BCManualLine {
-  id: string
-  productId: string | null
-  createProduct: boolean
-  description: string
-  quantite: string
-  prixHT: string
-  remise: string
-  tauxTVA: string
-  fodec: boolean
-  tauxFodec: string
-  totalHT: string
-  typeSource: "PRODUCTION" | "STOCK"
-}
+import { X, Loader2, StickyNote, Calculator } from "lucide-react"
+import { formatCurrency } from "@/lib/decimal"
+import { ScanBCFormCards, type Client } from "./scan-bc-form-cards"
+import { ScanBCManualLinesTable, type ManualBCProduct } from "./scan-bc-manual-lines-table"
+import { computeBCTotals, type BCManualLine } from "./scan-bc-totals"
 
 interface Props {
   clients: Client[]
-  products: Product[]
+  products: ManualBCProduct[]
   formTiersId: string
   onFormTiersId: (v: string) => void
   formDate: string
@@ -94,289 +43,29 @@ export function ScanBCManualEntry({
   lines, onAddLine, onRemoveLine, onUpdateLine,
   onSave, onCancel, isSaving,
 }: Props) {
-  const [clientSearch, setClientSearch] = useState("")
-
-  const selectedClient = clients.find((c) => c.id === formTiersId  )
-  const filteredClients = clients.filter((c) =>
-    c.raisonSociale.toLowerCase().includes(clientSearch.toLowerCase())
-  )
-
-  const productSelectOptions = buildProductSelectOptions(products)
-
-  const totals = useMemo(() => {
-    let baseHT = 0
-    let totalRemise = 0
-    let totalTVA = 0
-    let totalFodec = 0
-
-    for (const line of lines) {
-      const prix = parseTunisianNumber(line.prixHT) || 0
-      const qte = parseTunisianNumber(line.quantite) || 0
-      const remisePct = parseTunisianNumber(line.remise) || 0
-      const tauxTVA = Number(line.tauxTVA) || 0
-      const tauxFodec = Number(line.tauxFodec) || 1
-
-      const lineHT = prix * qte
-      const remiseAmount = lineHT * (remisePct / 100)
-      const lineAfterRemise = lineHT - remiseAmount
-      const lineTVA = lineAfterRemise * (tauxTVA / 100)
-      const lineFodec = lineAfterRemise * (line.fodec ? tauxFodec / 100 : 0)
-
-      baseHT += lineHT
-      totalRemise += remiseAmount
-      totalTVA += lineTVA
-      totalFodec += lineFodec
-    }
-
-    const totalHT = baseHT - totalRemise
-    const timbre = 1.000
-    const totalTTC = totalHT + totalTVA + totalFodec + timbre
-
-    return { baseHT, totalRemise, totalHT, totalTVA, totalFodec, totalTTC }
-  }, [lines])
-
-  function handleProductSelect(lineId: string, productId: string) {
-    if (productId === "none") return
-    const product = products.find((p) => p.id === productId)
-    if (!product) return
-    const currentLine = lines.find((l) => l.id === lineId)
-    onUpdateLine(lineId, {
-      productId: product.id,
-      description: currentLine?.description || product.nom,
-      prixHT: currentLine?.prixHT || product.prixHT,
-    })
-  }
+  const totals = useMemo(() => computeBCTotals(lines), [lines])
 
   return (
     <div className="grid grid-cols-2 gap-4 max-w-5xl mx-auto">
-      {/* Card Informations BC */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-            <FileText className="h-4 w-4" />
-            Informations Bon de Commande
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs">N° BC</Label>
-            <Input
-              value="BC — auto-généré"
-              disabled
-              className="h-8 text-sm bg-muted text-muted-foreground"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs">Date création</Label>
-            <Input
-              type="date"
-              value={formDate}
-              onChange={(e) => onFormDate(e.target.value)}
-              className="h-8 text-sm"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs">Date expiration</Label>
-            <Input
-              type="date"
-              value={formDateExpiration}
-              onChange={(e) => onFormDateExpiration(e.target.value)}
-              className="h-8 text-sm"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs">Référence client</Label>
-            <Input
-              value={formRefClient}
-              onChange={(e) => onFormRefClient(e.target.value)}
-              className="h-8 text-sm"
-              placeholder="Référence du document client"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <ScanBCFormCards
+        clients={clients}
+        formTiersId={formTiersId}
+        onFormTiersId={onFormTiersId}
+        formDate={formDate}
+        onFormDate={onFormDate}
+        formDateExpiration={formDateExpiration}
+        onFormDateExpiration={onFormDateExpiration}
+        formRefClient={formRefClient}
+        onFormRefClient={onFormRefClient}
+      />
 
-      {/* Card Client */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-            <User className="h-4 w-4" />
-            Client
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs">Sélectionner un client</Label>
-            <Combobox
-              value={selectedClient || null}
-              onValueChange={(c) => onFormTiersId(c ? c.id : "")}
-              onInputValueChange={setClientSearch}
-              itemToStringLabel={(c) => (c ? c.raisonSociale : "")}
-            >
-              <ComboboxInput className="h-8 text-sm w-full" placeholder="Rechercher un client..." />
-              <ComboboxContent>
-                <ComboboxEmpty>Aucun client trouvé.</ComboboxEmpty>
-                <ComboboxList>
-                  {filteredClients.map((c) => (
-                    <ComboboxItem key={c.id} value={c}>
-                      {c.raisonSociale}
-                    </ComboboxItem>
-                  ))}
-                </ComboboxList>
-              </ComboboxContent>
-            </Combobox>
-          </div>
-          {selectedClient && (
-            <div className="p-2.5 rounded-lg bg-muted/50 text-xs space-y-1">
-              <p className="font-semibold">{selectedClient.raisonSociale}</p>
-              {selectedClient.matriculeFiscal && (
-                <p className="text-muted-foreground font-mono">
-                  MF: {selectedClient.matriculeFiscal}
-                </p>
-              )}
-              {selectedClient.ville && (
-                <p className="text-muted-foreground">{selectedClient.ville}</p>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Card Lignes - pleine largeur */}
-      <Card className="col-span-2">
-        <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <CardTitle className="text-sm font-semibold">Lignes du bon de commande</CardTitle>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={onAddLine}>
-            <Plus className="h-3 w-3" />
-            Ajouter une ligne
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-b border-border">
-                  {["Produit", "Description", "Qté", "Prix HT", "Rem.%", "TVA%", "FODEC", "Source", "Total HT", ""].map((h) => (
-                    <TableHead key={h} className="text-left text-xs text-muted-foreground font-medium pb-2 pr-2 last:pr-0">{h}</TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody className="divide-y divide-border">
-                {lines.map((line) => {
-                  const prix = parseTunisianNumber(line.prixHT) || 0
-                  const qte = parseTunisianNumber(line.quantite) || 0
-                  const remisePct = parseTunisianNumber(line.remise) || 0
-                  const lineHT = prix * qte
-                  const remiseAmount = lineHT * (remisePct / 100)
-                  const totalHT = lineHT - remiseAmount
-
-                  return (
-                    <TableRow key={line.id} className="hover:bg-muted/50 transition-colors">
-                      <TableCell className="py-2 pr-2">
-                        <ProductSelect
-                          selectedProductId={line.productId}
-                          options={productSelectOptions}
-                          fieldMode="vente"
-                          onSelect={(opt) => {
-                            if (opt) {
-                              handleProductSelect(line.id, opt.id)
-                            }
-                          }}
-                        />
-                        {!line.productId && (
-                          <label className="flex items-center gap-1.5 mt-1 text-[11px] text-muted-foreground cursor-pointer">
-                            <Checkbox
-                              checked={line.createProduct}
-                              onCheckedChange={(v) => onUpdateLine(line.id, { createProduct: v === true })}
-                            />
-                            Créer le produit
-                          </label>
-                        )}
-                      </TableCell>
-                      <TableCell className="py-2 pr-2">
-                        <Input
-                          value={line.description}
-                          onChange={(e) => onUpdateLine(line.id, { description: e.target.value })}
-                          placeholder="Description..."
-                          className="h-7 text-xs min-w-36 bg-background"
-                        />
-                      </TableCell>
-                      <TableCell className="py-2 pr-2">
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          value={line.quantite}
-                          onChange={(e) => onUpdateLine(line.id, { quantite: e.target.value })}
-                          className="h-7 text-xs text-right w-16 bg-background tabular-nums"
-                        />
-                      </TableCell>
-                      <TableCell className="py-2 pr-2">
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          value={line.prixHT}
-                          onChange={(e) => onUpdateLine(line.id, { prixHT: e.target.value })}
-                          className="h-7 text-xs text-right w-24 bg-background tabular-nums"
-                        />
-                      </TableCell>
-                      <TableCell className="py-2 pr-2">
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          value={line.remise}
-                          onChange={(e) => onUpdateLine(line.id, { remise: e.target.value })}
-                          className="h-7 text-xs text-right w-16 bg-background tabular-nums"
-                        />
-                      </TableCell>
-                      <TableCell className="py-2 pr-2">
-                        <Select value={line.tauxTVA} onValueChange={(v) => onUpdateLine(line.id, { tauxTVA: v })}>
-                          <SelectTrigger className="h-7 text-xs w-16 bg-background"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {["0", "7", "13", "19"].map((t) => (
-                              <SelectItem key={t} value={t} className="text-xs">{t}%</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell className="py-2 pr-2 text-center">
-                        <div className="flex justify-center items-center h-full">
-                          <Checkbox
-                            checked={line.fodec}
-                            onCheckedChange={(v) => onUpdateLine(line.id, { fodec: v === true })}
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-2 pr-2">
-                        <Select value={line.typeSource} onValueChange={(v) => onUpdateLine(line.id, { typeSource: v as "PRODUCTION" | "STOCK" })}>
-                          <SelectTrigger className="h-7 text-xs w-24 bg-background"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="STOCK" className="text-xs">Stock</SelectItem>
-                            <SelectItem value="PRODUCTION" className="text-xs">Production</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell className="py-2 pr-2 text-right whitespace-nowrap">
-                        <span className="text-xs font-semibold tabular-nums">{formatCurrency(totalHT.toFixed(3), "TND")}</span>
-                      </TableCell>
-                      <TableCell className="py-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                          onClick={() => onRemoveLine(line.id)}
-                          disabled={lines.length === 1}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+      <ScanBCManualLinesTable
+        lines={lines}
+        products={products}
+        onAddLine={onAddLine}
+        onRemoveLine={onRemoveLine}
+        onUpdateLine={onUpdateLine}
+      />
 
       {/* Card Notes */}
       <Card>

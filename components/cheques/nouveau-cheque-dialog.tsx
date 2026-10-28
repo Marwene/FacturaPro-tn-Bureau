@@ -2,9 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Dialog,
   DialogContent,
@@ -19,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
 import { useChequesMutations } from "@/hooks/use-cheques"
 import { useClientsList } from "@/hooks/use-clients"
 import { useFournisseursList } from "@/hooks/use-fournisseurs"
@@ -30,30 +27,19 @@ import { notify } from "@/lib/notify"
 import { Loader2 } from "lucide-react"
 import { formatTND } from "@/lib/decimal"
 import type { SerializedTiers } from "@/lib/types"
+import { ChequeBasicFields, TiersSearchSelect } from "./cheque-form-fields"
+import {
+  buildCreateChequePayload,
+  makeDefaultForm,
+  validateChequeForm,
+  type ChequeForm,
+  type ChequeType,
+} from "./cheque-form-logic"
 
 interface NouveauChequeDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
 }
-
-function makeDefaultForm() {
-  return {
-    numero: "",
-    banque: "",
-    type: "RECU" as "RECU" | "EMIS",
-    tiersId: "",
-    invoiceId: "",
-    beneficiaire: "",
-    montant: "",
-    dateReception: new Date().toISOString().split("T")[0],
-    dateEncaissement: "",
-    banqueBeneficiaire: "",
-    isPaye: false,
-    notes: "",
-  }
-}
-
-type ChequeForm = ReturnType<typeof makeDefaultForm>
 
 export function NouveauChequeDialog({ open, onOpenChange }: NouveauChequeDialogProps) {
   const [form, setForm] = useState<ChequeForm>(makeDefaultForm)
@@ -85,7 +71,7 @@ export function NouveauChequeDialog({ open, onOpenChange }: NouveauChequeDialogP
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleTypeChange = (type: "RECU" | "EMIS") => {
+  const handleTypeChange = (type: ChequeType) => {
     setForm(makeDefaultForm())
     setSelectedTiers(null)
     setClientSearch("")
@@ -103,6 +89,20 @@ export function NouveauChequeDialog({ open, onOpenChange }: NouveauChequeDialogP
     }
   }
 
+  const handleTiersSearchChange = (value: string) => {
+    setClientSearch(value)
+    if (!value) {
+      setSelectedTiers(null)
+      set("tiersId", "")
+    }
+  }
+
+  const handleTiersClear = () => {
+    setSelectedTiers(null)
+    set("tiersId", "")
+    setClientSearch("")
+  }
+
   const handleInvoiceSelect = (docId: string) => {
     const doc = documents.find((d) => d.id === docId)
     if (doc) {
@@ -111,46 +111,15 @@ export function NouveauChequeDialog({ open, onOpenChange }: NouveauChequeDialogP
     }
   }
 
-  const filteredClients = clients.filter((c) =>
-    c.raisonSociale.toLowerCase().includes(clientSearch.toLowerCase()) ||
-    c.code.toLowerCase().includes(clientSearch.toLowerCase())
-  )
-
-  const filteredFournisseurs = fournisseurs.filter((f) =>
-    f.raisonSociale.toLowerCase().includes(clientSearch.toLowerCase()) ||
-    f.code.toLowerCase().includes(clientSearch.toLowerCase())
-  )
-
   const handleSubmit = async () => {
-    if (!form.numero || !beneficiaire || !form.montant || !form.dateReception) {
-      notify.error({ title: "Chèque non enregistré", error: "Remplissez tous les champs obligatoires : numéro, bénéficiaire, montant et date de réception." })
-      return
-    }
-
-    if (form.type === "RECU" && !form.tiersId) {
-      notify.error({ title: "Client requis", error: "Sélectionnez le client émetteur du chèque reçu." })
-      return
-    }
-
-    if (form.type === "EMIS" && !form.tiersId) {
-      notify.error({ title: "Fournisseur requis", error: "Sélectionnez le fournisseur bénéficiaire du chèque émis." })
+    const validationError = validateChequeForm(form, beneficiaire)
+    if (validationError) {
+      notify.error({ title: validationError.title, error: validationError.message })
       return
     }
 
     try {
-      await createCheque.mutateAsync({
-        numero: form.numero,
-        banque: form.banque || undefined,
-        type: form.type,
-        tiersId: form.tiersId || undefined,
-        invoiceId: form.invoiceId || undefined,
-        beneficiaire,
-        montant: parseFloat(form.montant),
-        dateEmission: form.dateReception,
-        dateEcheance: form.dateEncaissement || form.dateReception,
-        banqueBeneficiaire: form.banqueBeneficiaire || undefined,
-        notes: form.notes || undefined,
-      })
+      await createCheque.mutateAsync(buildCreateChequePayload(form, beneficiaire))
       notify.success({ title: `Chèque ${form.numero} créé` })
       setForm(makeDefaultForm())
       setSelectedTiers(null)
@@ -171,7 +140,7 @@ export function NouveauChequeDialog({ open, onOpenChange }: NouveauChequeDialogP
           {/* Type */}
           <div className="flex flex-col gap-1">
             <Label className="text-xs">Type *</Label>
-            <Select value={form.type} onValueChange={(v) => handleTypeChange(v as "RECU" | "EMIS")}>
+            <Select value={form.type} onValueChange={(v) => handleTypeChange(v as ChequeType)}>
               <SelectTrigger className="h-8 text-sm">
                 <SelectValue />
               </SelectTrigger>
@@ -184,110 +153,32 @@ export function NouveauChequeDialog({ open, onOpenChange }: NouveauChequeDialogP
 
           {/* Client selection for RECU type */}
           {form.type === "RECU" && (
-            <div className="flex flex-col gap-1">
-              <Label className="text-xs">Client (Tireur) *</Label>
-              <Input
-                placeholder="Rechercher un client..."
-                value={clientSearch}
-                onChange={(e) => {
-                  setClientSearch(e.target.value)
-                  if (!e.target.value) {
-                    setSelectedTiers(null)
-                    set("tiersId", "")
-                  }
-                }}
-                className="h-8 text-sm"
-              />
-              {clientSearch && !selectedTiers && (
-                <div className="max-h-32 overflow-y-auto border rounded-md bg-background">
-                  {filteredClients.length === 0 ? (
-                    <p className="text-xs text-muted-foreground p-2">Aucun client trouvé</p>
-                  ) : (
-                    filteredClients.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        className="w-full text-left px-2 py-1.5 text-xs hover:bg-muted transition-colors"
-                        onClick={() => handleTiersSelect(c)}
-                      >
-                        <p className="font-medium">{c.raisonSociale}</p>
-                        <p className="text-muted-foreground">{c.code} · {c.ville ?? "—"}</p>
-                      </button>
-                    ))
-                  )}
-                </div>
-              )}
-              {selectedTiers && (
-                <div className="text-xs text-muted-foreground">
-                  Sélectionné : <span className="font-medium text-foreground">{selectedTiers.raisonSociale}</span>
-                  <button
-                    type="button"
-                    className="ml-2 text-destructive hover:underline"
-                    onClick={() => {
-                      setSelectedTiers(null)
-                      set("tiersId", "")
-                      setClientSearch("")
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-              )}
-            </div>
+            <TiersSearchSelect
+              label="Client (Tireur) *"
+              placeholder="Rechercher un client..."
+              emptyLabel="Aucun client trouvé"
+              items={clients}
+              search={clientSearch}
+              onSearchChange={handleTiersSearchChange}
+              selected={selectedTiers}
+              onSelect={handleTiersSelect}
+              onClear={handleTiersClear}
+            />
           )}
 
           {/* Supplier selection for EMIS type */}
           {form.type === "EMIS" && (
-            <div className="flex flex-col gap-1">
-              <Label className="text-xs">Fournisseur (Bénéficiaire) *</Label>
-              <Input
-                placeholder="Rechercher un fournisseur..."
-                value={clientSearch}
-                onChange={(e) => {
-                  setClientSearch(e.target.value)
-                  if (!e.target.value) {
-                    setSelectedTiers(null)
-                    set("tiersId", "")
-                  }
-                }}
-                className="h-8 text-sm"
-              />
-              {clientSearch && !selectedTiers && (
-                <div className="max-h-32 overflow-y-auto border rounded-md bg-background">
-                  {filteredFournisseurs.length === 0 ? (
-                    <p className="text-xs text-muted-foreground p-2">Aucun fournisseur trouvé</p>
-                  ) : (
-                    filteredFournisseurs.map((f) => (
-                      <button
-                        key={f.id}
-                        type="button"
-                        className="w-full text-left px-2 py-1.5 text-xs hover:bg-muted transition-colors"
-                        onClick={() => handleTiersSelect(f)}
-                      >
-                        <p className="font-medium">{f.raisonSociale}</p>
-                        <p className="text-muted-foreground">{f.code} · {f.ville ?? "—"}</p>
-                      </button>
-                    ))
-                  )}
-                </div>
-              )}
-              {selectedTiers && (
-                <div className="text-xs text-muted-foreground">
-                  Sélectionné : <span className="font-medium text-foreground">{selectedTiers.raisonSociale}</span>
-                  <button
-                    type="button"
-                    className="ml-2 text-destructive hover:underline"
-                    onClick={() => {
-                      setSelectedTiers(null)
-                      set("tiersId", "")
-                      setClientSearch("")
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-              )}
-            </div>
+            <TiersSearchSelect
+              label="Fournisseur (Bénéficiaire) *"
+              placeholder="Rechercher un fournisseur..."
+              emptyLabel="Aucun fournisseur trouvé"
+              items={fournisseurs}
+              search={clientSearch}
+              onSearchChange={handleTiersSearchChange}
+              selected={selectedTiers}
+              onSelect={handleTiersSelect}
+              onClear={handleTiersClear}
+            />
           )}
 
           {/* Invoice selection for RECU type */}
@@ -309,140 +200,13 @@ export function NouveauChequeDialog({ open, onOpenChange }: NouveauChequeDialogP
             </div>
           )}
 
-          {/* N° Chèque */}
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs">N° Chèque *</Label>
-            <Input
-              value={form.numero}
-              onChange={(e) => set("numero", e.target.value)}
-              placeholder="N° du chèque"
-              className="h-8 text-sm"
-            />
-          </div>
-
-          {/* Bénéficiaire */}
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs">Bénéficiaire *</Label>
-            {form.type === "RECU" ? (
-              <Input
-                value={companyName}
-                readOnly
-                className="h-8 text-sm bg-muted"
-              />
-            ) : (
-              <Input
-                value={form.beneficiaire}
-                onChange={(e) => set("beneficiaire", e.target.value)}
-                placeholder="Nom du fournisseur"
-                className="h-8 text-sm"
-              />
-            )}
-          </div>
-
-          {/* Montant */}
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs">Montant (DT) *</Label>
-            <Input
-              type="text"
-              inputMode="decimal"
-              value={form.montant ? formatTND(form.montant) : ""}
-              onChange={(e) => {
-                // Strip non-numeric chars except . and ,
-                const raw = e.target.value.replace(/[^\d.,]/g, "").replace(",", ".")
-                set("montant", raw)
-              }}
-              placeholder="0,000 DT"
-              className="h-8 text-sm"
-            />
-          </div>
-
-          {/* Dates */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1">
-              <Label className="text-xs">Date Réception *</Label>
-              <Input
-                type="date"
-                value={form.dateReception}
-                onChange={(e) => set("dateReception", e.target.value)}
-                className="h-8 text-sm"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label className="text-xs">Date Encaissement</Label>
-              <Input
-                type="date"
-                value={form.dateEncaissement}
-                onChange={(e) => set("dateEncaissement", e.target.value)}
-                placeholder="À compléter ultérieurement"
-                className="h-8 text-sm"
-              />
-              <p className="text-[10px] text-muted-foreground">Peut être mise à jour ultérieurement</p>
-            </div>
-          </div>
-
-          {/* Banque Émettrice — auto-filled from client or manual */}
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs">Banque Émettrice</Label>
-            <Input
-              value={form.banque}
-              onChange={(e) => set("banque", e.target.value)}
-              placeholder={selectedTiers?.banque ? "Rempli automatiquement" : "Saisir la banque émettrice"}
-              className="h-8 text-sm"
-            />
-            {selectedTiers?.banque && (
-              <p className="text-[10px] text-muted-foreground">Rempli depuis la banque du client sélectionné</p>
-            )}
-          </div>
-
-          {/* Banque Bénéficiaire — list of company bank accounts */}
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs">Banque Bénéficiaire</Label>
-            {bankAccounts.length > 0 ? (
-              <Select value={form.banqueBeneficiaire} onValueChange={(v) => set("banqueBeneficiaire", v)}>
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue placeholder="Sélectionner une banque" />
-                </SelectTrigger>
-                <SelectContent>
-                  {bankAccounts.map((ba) => (
-                    <SelectItem key={ba.id} value={ba.nomBanque}>
-                      {ba.nomBanque}{ba.agence ? ` — ${ba.agence}` : ""}{ba.isDefault ? " (par défaut)" : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <Input
-                value={form.banqueBeneficiaire}
-                onChange={(e) => set("banqueBeneficiaire", e.target.value)}
-                placeholder="Aucun compte bancaire configuré"
-                className="h-8 text-sm"
-              />
-            )}
-            <p className="text-[10px] text-muted-foreground">Peut être ajoutée ultérieurement</p>
-          </div>
-
-          {/* Statut */}
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="isPaye"
-              checked={form.isPaye}
-              onCheckedChange={(checked) => set("isPaye", checked === true)}
-            />
-            <Label htmlFor="isPaye" className="text-xs cursor-pointer">
-              Chèque encaissé / Payé
-            </Label>
-          </div>
-
-          {/* Notes */}
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs">Notes</Label>
-            <Textarea
-              value={form.notes}
-              onChange={(e) => set("notes", e.target.value)}
-              placeholder="Informations complémentaires..."
-              className="text-sm min-h-[60px] resize-y"
-            />
-          </div>
+          <ChequeBasicFields
+            form={form}
+            set={set}
+            selectedTiers={selectedTiers}
+            companyName={companyName}
+            bankAccounts={bankAccounts}
+          />
         </div>
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>

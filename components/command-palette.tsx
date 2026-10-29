@@ -4,69 +4,16 @@ import { useState, useEffect, useCallback, useRef, useDeferredValue } from "reac
 
 import { usePathname, useRouter } from "next/navigation";
 import { useGlobalSearch } from "@/hooks/use-global-search";
-import {
-  Search,
-  Users,
-  Truck,
-  Package,
-  FileText,
-  FileSignature,
-  ShoppingCart,
-  Undo2,
-  ShoppingBag,
-  CreditCard,
-  Globe,
-  Ban,
-  BarChart3,
-  RotateCcw,
-  Warehouse,
-} from "lucide-react";
+import { Search } from "lucide-react";
 import { Dialog, DialogContent, DialogOverlay, DialogTitle } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import type { SearchGroup, SearchItem } from "@/lib/search";
-
-const MODULE_ICONS: Record<string, { icon: React.ReactNode; color: string }> = {
-  clients: { icon: <Users className="h-3.5 w-3.5" />, color: "text-blue-500" },
-  fournisseurs: { icon: <Truck className="h-3.5 w-3.5" />, color: "text-orange-500" },
-  produits: { icon: <Package className="h-3.5 w-3.5" />, color: "text-emerald-500" },
-  factures: { icon: <FileText className="h-3.5 w-3.5" />, color: "text-violet-500" },
-  devis: { icon: <FileSignature className="h-3.5 w-3.5" />, color: "text-cyan-500" },
-  "bons-commande": { icon: <ShoppingCart className="h-3.5 w-3.5" />, color: "text-amber-500" },
-  "bons-livraison": { icon: <Truck className="h-3.5 w-3.5" />, color: "text-sky-500" },
-  avoirs: { icon: <Undo2 className="h-3.5 w-3.5" />, color: "text-rose-500" },
-  achats: { icon: <ShoppingBag className="h-3.5 w-3.5" />, color: "text-indigo-500" },
-  paiements: { icon: <CreditCard className="h-3.5 w-3.5" />, color: "text-green-500" },
-  cheques: { icon: <Ban className="h-3.5 w-3.5" />, color: "text-red-500" },
-  exports: { icon: <Globe className="h-3.5 w-3.5" />, color: "text-teal-500" },
-  rapports: { icon: <BarChart3 className="h-3.5 w-3.5" />, color: "text-orange-500" },
-  inventaire: { icon: <Warehouse className="h-3.5 w-3.5" />, color: "text-emerald-500" },
-  "stock-mouvements": { icon: <RotateCcw className="h-3.5 w-3.5" />, color: "text-emerald-500" },
-};
-
-const PATH_MODULE_MAP: Record<string, string> = {
-  clients: "clients",
-  fournisseurs: "fournisseurs",
-  produits: "produits",
-  factures: "factures",
-  devis: "devis",
-  "bons-commande": "bons-commande",
-  "bons-livraison": "bons-livraison",
-  avoirs: "avoirs",
-  achats: "achats",
-  paiements: "paiements",
-  cheques: "cheques",
-  exports: "exports",
-  rapports: "rapports",
-  inventaire: "inventaire",
-  "stock-mouvements": "stock-mouvements",
-};
-
-function detectModule(pathname: string): string | null {
-  const segments = pathname.split("/").filter(Boolean);
-  if (segments.length === 0) return null;
-  return PATH_MODULE_MAP[segments[0] as keyof typeof PATH_MODULE_MAP] ?? null;
-}
+import type { SearchGroup } from "@/lib/search";
+import {
+  PATH_MODULE_MAP,
+  detectModule,
+  reconcileSelectedModule,
+  nextNavIndex,
+} from "@/lib/command-palette-logic";
+import { PaletteResults } from "@/components/command-palette-results";
 
 const EMPTY_GROUPS: SearchGroup[] = [];
 
@@ -104,17 +51,16 @@ export function CommandPalette() {
   // l'ancien effet (ex-L103-109) en ajustement au rendu (React « storing
   // information from previous renders ») : mêmes déclencheurs que le .then de
   // l'ancien effet, savoir l'arrivée d'un résultat (dataUpdatedAt) ou le
-  // changement de `groups` (requête vidée), sans écriture dans un effet.
+  // changement de `groups` (requête vidée), sans écriture dans un effet. Les
+  // 3 branches vives dans `reconcileSelectedModule`
+  // (`lib/command-palette-logic.ts`, pur et testable) ; écriture seulement si
+  // la valeur change réellement (bail-out React identique à l'ex-appel à
+  // valeur égale).
   const [prevAdjust, setPrevAdjust] = useState({ groups, updatedAt: search.dataUpdatedAt });
   if (prevAdjust.groups !== groups || prevAdjust.updatedAt !== search.dataUpdatedAt) {
     setPrevAdjust({ groups, updatedAt: search.dataUpdatedAt });
-    if (groups.length > 0 && !selectedModule) {
-      setSelectedModule(groups[0].module);
-    } else if (groups.length === 0) {
-      setSelectedModule(null);
-    } else if (selectedModule && !groups.find((gr) => gr.module === selectedModule)) {
-      setSelectedModule(groups[0].module);
-    }
+    const nextModule = reconcileSelectedModule(groups, selectedModule);
+    if (nextModule !== selectedModule) setSelectedModule(nextModule);
   }
 
   // Reset de l'état à la fermeture (branche `else` de l'ex-effet [open],
@@ -147,7 +93,10 @@ export function CommandPalette() {
   const storeNav = (index: number) =>
     setNav({ groups, module: selectedModule, updatedAt: search.dataUpdatedAt, index });
 
-  // Keyboard shortcut
+  // Keyboard shortcut — Justification useEffect : souscription à un API
+  // navigateur (listener `keydown` global) = système externe non réactif,
+  // autorisé par les CODE RULES. Ctrl+Espace ouvre/ferme la palette, Échap la
+  // ferme.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.code === "Space") {
@@ -160,12 +109,13 @@ export function CommandPalette() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  // Focus de l'input à l'ouverture — seul effet conservé avec le raccourci
-  // clavier, réduit au seul focus DOM impératif : au rendu où `open` bascule,
-  // l'input n'est pas encore monté (ref null) et le focus doit attendre les
-  // 50 ms que le focus-trap Radix se pose ; ni le rendu ni un ref callback
-  // (qui s'exécuterait au commit, sans ce délai) ne peuvent le faire de façon
-  // fiable. La branche reset (else) est passée au rendu ci-dessus.
+  // Justification useEffect : focus de l'input à l'ouverture — seul effet
+  // conservé avec le raccourci clavier, réduit au seul focus DOM impératif :
+  // au rendu où `open` bascule, l'input n'est pas encore monté (ref null) et le
+  // focus doit attendre les 50 ms que le focus-trap Radix se pose ; ni le rendu
+  // ni un ref callback (qui s'exécuterait au commit, sans ce délai) ne peuvent
+  // le faire de façon fiable. La branche reset (else) est passée au rendu
+  // ci-dessus.
   useEffect(() => {
     if (!open) return;
     const timer = setTimeout(() => {
@@ -209,69 +159,33 @@ export function CommandPalette() {
             onKeyDown={(e) => {
               if (!selectedGroup || selectedGroup.items.length === 0) return;
               const max = selectedGroup.items.length - 1;
-              if (e.key === "ArrowDown") {
-                e.preventDefault();
-                storeNav(selectedItemIndex < max ? selectedItemIndex + 1 : 0);
-              } else if (e.key === "ArrowUp") {
-                e.preventDefault();
-                storeNav(selectedItemIndex > 0 ? selectedItemIndex - 1 : max);
-              } else if (e.key === "Enter") {
+              if (e.key === "Enter") {
                 e.preventDefault();
                 navigate(selectedGroup.items[selectedItemIndex].href);
+                return;
               }
+              // ↑/↓ : logique d'index extraite dans `nextNavIndex` (pur,
+              // testable) — `null` = touche non gérée, donc aucun preventDefault.
+              const nextIndex = nextNavIndex(e.key, selectedItemIndex, max);
+              if (nextIndex === null) return;
+              e.preventDefault();
+              storeNav(nextIndex);
             }}
           />
           {loading && <span className="size-3 rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground animate-spin" />}
         </div>
 
-        {/* Results area */}
+        {/* Results area (section extraite : components/command-palette-results.tsx) */}
         {query.trim() && (
-          <div className="flex min-h-[220px]">
-            {/* Left: modules */}
-            <div className="w-[200px] shrink-0 border-r overflow-y-auto py-2">
-              {groups.length === 0 && !loading && (
-                <p className="text-xs text-muted-foreground text-center py-8">Aucun résultat</p>
-              )}
-              {groups.map((g) => {
-                const mi = MODULE_ICONS[g.module];
-                return (
-                  <button
-                    key={g.module}
-                    onClick={() => setSelectedModule(g.module)}
-                    className={cn(
-                      "w-full flex items-center gap-2.5 px-4 py-2 text-left text-sm transition-colors",
-                      selectedModule === g.module
-                        ? "bg-accent text-accent-foreground font-medium"
-                        : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
-                    )}
-                  >
-                    {mi && <span className={cn("shrink-0", mi.color)}>{mi.icon}</span>}
-                    <span className="flex-1 truncate">{g.moduleLabel}</span>
-                    <Badge variant="secondary" className="h-4 text-[10px] tabular-nums px-1.5">
-                      {g.items.length}
-                    </Badge>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Right: results */}
-            <div className="flex-1 overflow-y-auto py-2">
-              {loading && (
-                <p className="text-xs text-muted-foreground text-center py-8">Recherche en cours...</p>
-              )}
-              {!loading && selectedGroup && selectedGroup.items.length > 0 && (
-                <div>
-                  {selectedGroup.items.map((item, idx) => (
-                    <ResultRow key={item.id} item={item} module={selectedGroup.module} highlighted={idx === selectedItemIndex} onSelect={navigate} />
-                  ))}
-                </div>
-              )}
-              {!loading && selectedGroup && selectedGroup.items.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-8">Aucun résultat dans ce module</p>
-              )}
-            </div>
-          </div>
+          <PaletteResults
+            groups={groups}
+            loading={loading}
+            selectedModule={selectedModule}
+            onSelectModule={setSelectedModule}
+            selectedGroup={selectedGroup}
+            selectedItemIndex={selectedItemIndex}
+            onSelect={navigate}
+          />
         )}
 
         {/* Empty state */}
@@ -291,24 +205,5 @@ export function CommandPalette() {
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function ResultRow({ item, module, highlighted, onSelect }: { item: SearchItem; module: string; highlighted: boolean; onSelect: (href: string) => void }) {
-  const mi = MODULE_ICONS[module];
-  return (
-    <button
-      onClick={() => onSelect(item.href)}
-      className={cn(
-        "w-full flex items-start gap-3 px-4 py-2.5 text-left transition-colors",
-        highlighted ? "bg-accent text-accent-foreground" : "hover:bg-accent/50",
-      )}
-    >
-      {mi && <span className={cn("mt-0.5 shrink-0", mi.color)}>{mi.icon}</span>}
-      <div className="flex-1 min-w-0">
-        <span className="text-sm font-medium">{item.label}</span>
-        {item.subtitle && <span className="block text-[11px] text-muted-foreground truncate">{item.subtitle}</span>}
-      </div>
-    </button>
   );
 }

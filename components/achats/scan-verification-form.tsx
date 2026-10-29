@@ -1,30 +1,28 @@
 "use client"
 
-import { useAchatFormStore, useScanAchatStore, ACHAT_CATEGORIE_LABELS } from "@/lib/stores/achats-store"
+import { useAchatFormStore, useScanAchatStore } from "@/lib/stores/achats-store"
 import { useAchatMutations } from "@/hooks/use-achats"
 import { useAchatBls } from "@/hooks/use-achats-queries"
-import type { AchatCategorie } from "@/lib/types"
 import { useFournisseurs, useProducts } from "@/hooks/use-queries"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Sparkles, FileText, CheckCircle2, Loader2, Tag } from "lucide-react"
-import { formatCurrency } from "@/lib/decimal"
+import { CheckCircle2, Loader2 } from "lucide-react"
 import { notify } from "@/lib/notify"
 import { useRouter } from "next/navigation"
-import { parseTunisianNumber } from "@/lib/decimal"
 import { ScanVerifHeader } from "./scan-verif-header"
 import { ScanVerifFournisseur } from "./scan-verif-fournisseur"
 import { ScanVerifLinesTable } from "./scan-verif-lines-table"
 import { ScanVerifBottom } from "./scan-verif-bottom"
+import {
+  ScanVerifClassification,
+  ScanVerifCreateFournisseurNotice,
+  ScanVerifDocumentPreview,
+  ScanVerifExtractedData,
+} from "./scan-verif-sections"
+import {
+  buildAchatScanPayload,
+  resolveProductSelection,
+  validateScanAchatForm,
+} from "./scan-verif-logic"
 
 export function ScanVerificationForm() {
   const router = useRouter()
@@ -50,36 +48,11 @@ export function ScanVerificationForm() {
   const handleReset = () => { scan.resetScan(); form.resetForm() }
 
   const handleConfirm = () => {
-    if (!form.tiersId && !(form.createFournisseur && scan.extracted?.fournisseur?.raisonSociale)) { notify.error({ title: "Fournisseur requis", error: "Sélectionnez un fournisseur pour continuer." }); return }
-    if (form.lines.length === 0 || form.lines.every((l) => !l.description)) { notify.error({ title: "Ligne d'achat requise", error: "Ajoutez au moins une ligne d'achat." }); return }
+    const validationError = validateScanAchatForm(form, scan.extracted)
+    if (validationError) { notify.error(validationError); return }
     scan.setScanState("confirming")
     createAchat.mutate(
-      {
-        type: form.type,
-        tiersId: form.tiersId,
-        createFournisseur: form.createFournisseur,
-        fournisseur: scan.extracted?.fournisseur?.raisonSociale ? scan.extracted.fournisseur : undefined,
-        dateFacture: form.dateFacture,
-        dateEcheance: form.dateEcheance || null,
-        referenceFournisseur: form.referenceFournisseur || null,
-        timbreFiscal: parseTunisianNumber(form.timbreFiscal) || 0,
-        totalHT: form.totalHT ? parseTunisianNumber(form.totalHT) : undefined,
-        totalTVA: form.totalTVA ? parseTunisianNumber(form.totalTVA) : undefined,
-        totalTTC: form.totalTTC ? parseTunisianNumber(form.totalTTC) : undefined,
-        notes: form.notes || null,
-        categorieAchat: form.categorieAchat,
-        blAchatId: form.blAchatId || null,
-        asDraft: false,
-        lines: form.lines.map((l) => ({
-          productId: l.productId || null,
-          createProduct: l.createProduct,
-          description: l.description,
-          quantite: parseTunisianNumber(l.quantite) || 1,
-          prixAchat: parseTunisianNumber(l.prixAchat) || 0,
-          remise: parseTunisianNumber(l.remise) || 0,
-          tauxTVA: parseTunisianNumber(l.tauxTVA) || 19,
-        })),
-      },
+      buildAchatScanPayload(form, scan.extracted),
       {
         onSuccess: () => { notify.success({ title: "Achat enregistré", description: "Stock mis à jour." }); handleReset(); router.push("/achats") },
         onError: (err) => { notify.error({ title: "Achat non créé", error: err, context: "création de l'achat depuis le scan" }); scan.setScanState("extracted") },
@@ -88,15 +61,8 @@ export function ScanVerificationForm() {
   }
 
   const handleProductSelect = (lineId: string, productId: string) => {
-    if (productId === "none") return
-    const product = products.find((p) => p.id === productId)
-    if (!product) return
-    const currentLine = form.lines.find((l) => l.id === lineId)
-    form.updateLine(lineId, {
-      productId: product.id,
-      description: currentLine?.description || product.nom,
-      prixAchat: currentLine?.prixAchat || product.prixAchat,
-    })
+    const updates = resolveProductSelection(products, form.lines, lineId, productId)
+    if (updates) form.updateLine(lineId, updates)
   }
 
   return (
@@ -105,25 +71,7 @@ export function ScanVerificationForm() {
         <ScanVerifHeader onReset={handleReset} />
 
         <div className="grid grid-cols-5 gap-4">
-          <div className="col-span-2">
-            <Card className="sticky top-4">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-                  <FileText className="h-4 w-4" />
-                  Document original
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                {scan.previewUrl && (
-                  scan.fileName.endsWith(".pdf") ? (
-                    <iframe src={scan.previewUrl} className="w-full h-[600px] rounded-b-lg" title="Document" />
-                  ) : (
-                    <img src={scan.previewUrl} alt="Document scanné" loading="lazy" className="w-full object-contain rounded-b-lg max-h-[600px]" />
-                  )
-                )}
-              </CardContent>
-            </Card>
-          </div>
+          <ScanVerifDocumentPreview previewUrl={scan.previewUrl} fileName={scan.fileName} />
 
           <div className="col-span-3 flex flex-col gap-4">
             <div className="flex items-center justify-between">
@@ -140,22 +88,11 @@ export function ScanVerificationForm() {
             </div>
 
             {!form.tiersId && scan.extracted?.fournisseur?.raisonSociale && (
-              <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
-                <p className="flex items-start gap-2 text-sm text-amber-800">
-                  <Sparkles className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
-                  <span>
-                    Fournisseur introuvable — il sera créé automatiquement :{" "}
-                    <strong>{scan.extracted.fournisseur.raisonSociale}</strong>
-                  </span>
-                </p>
-                <label className="flex items-center gap-2 text-xs text-amber-800 cursor-pointer">
-                  <Checkbox
-                    checked={form.createFournisseur}
-                    onCheckedChange={(v) => form.setCreateFournisseur(v === true)}
-                  />
-                  Créer le fournisseur automatiquement
-                </label>
-              </div>
+              <ScanVerifCreateFournisseurNotice
+                raisonSociale={scan.extracted.fournisseur.raisonSociale}
+                checked={form.createFournisseur}
+                onCheckedChange={form.setCreateFournisseur}
+              />
             )}
 
             <ScanVerifFournisseur
@@ -174,109 +111,18 @@ export function ScanVerificationForm() {
               onDateEcheanceChange={form.setDateEcheance}
             />
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-                  <Tag className="h-3.5 w-3.5 text-primary" />
-                  Classification
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-3">
-                <div className="flex flex-col gap-1">
-                  <Label className="text-xs">Catégorie d&apos;achat</Label>
-                  <Select
-                    value={form.categorieAchat ?? ""}
-                    onValueChange={(v) => form.setCategorieAchat(v === "" ? null : (v as AchatCategorie))}
-                  >
-                    <SelectTrigger className="h-8 text-sm w-full">
-                      <SelectValue placeholder="Sélectionner une catégorie" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(Object.keys(ACHAT_CATEGORIE_LABELS) as AchatCategorie[]).map((cat) => (
-                        <SelectItem key={cat} value={cat}>
-                          {ACHAT_CATEGORIE_LABELS[cat]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {form.type === "FACTURE" && (
-                  <div className="flex flex-col gap-1">
-                    <Label className="text-xs">Rattacher au BL d&apos;achat</Label>
-                    <Select
-                      value={form.blAchatId ?? "none"}
-                      onValueChange={(v) => form.setBlAchatId(v === "none" ? null : v)}
-                      disabled={!form.tiersId}
-                    >
-                      <SelectTrigger className="h-8 text-sm w-full">
-                        <SelectValue placeholder={form.tiersId ? "Sélectionner un BL" : "Sélectionnez d'abord un fournisseur"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">— Aucun —</SelectItem>
-                        {bls.map((bl) => (
-                          <SelectItem key={bl.id} value={bl.id}>
-                            BL {bl.numero} — {bl.referenceFournisseur ?? (bl.tiers as { raisonSociale?: string })?.raisonSociale ?? ""} — {formatCurrency(bl.totalTTC, "TND")} — {bl.status}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Le stock a déjà été mis à jour par le BL ; la facture liée ne créera pas de nouvelle entrée de stock.
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <ScanVerifClassification
+              type={form.type}
+              tiersId={form.tiersId}
+              categorieAchat={form.categorieAchat}
+              blAchatId={form.blAchatId}
+              bls={bls}
+              onCategorieChange={form.setCategorieAchat}
+              onBlChange={form.setBlAchatId}
+            />
 
             {scan.extracted && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5 text-primary" />
-                    Données extraites
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-2 text-sm">
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    {scan.extracted.fournisseur?.raisonSociale && (
-                      <div className="flex justify-between p-2 rounded-lg bg-muted/50">
-                        <span className="text-muted-foreground">Fournisseur</span>
-                        <span className="font-medium">{scan.extracted.fournisseur.raisonSociale}</span>
-                      </div>
-                    )}
-                    {scan.extracted.referenceFournisseur && (
-                      <div className="flex justify-between p-2 rounded-lg bg-muted/50">
-                        <span className="text-muted-foreground">N° Facture</span>
-                        <span className="font-medium">{scan.extracted.referenceFournisseur}</span>
-                      </div>
-                    )}
-                    {scan.extracted.totalHT != null && (
-                      <div className="flex justify-between p-2 rounded-lg bg-muted/50">
-                        <span className="text-muted-foreground">Total HT</span>
-                        <span className="font-medium">{formatCurrency(String(scan.extracted.totalHT), "TND")}</span>
-                      </div>
-                    )}
-                    {scan.extracted.totalTVA != null && (
-                      <div className="flex justify-between p-2 rounded-lg bg-muted/50">
-                        <span className="text-muted-foreground">TVA</span>
-                        <span className="font-medium">{formatCurrency(String(scan.extracted.totalTVA), "TND")}</span>
-                      </div>
-                    )}
-                    {scan.extracted.timbreFiscal != null && (
-                      <div className="flex justify-between p-2 rounded-lg bg-muted/50">
-                        <span className="text-muted-foreground">Timbre fiscal</span>
-                        <span className="font-medium">{formatCurrency(String(scan.extracted.timbreFiscal), "TND")}</span>
-                      </div>
-                    )}
-                    {scan.extracted.totalTTC != null && (
-                      <div className="flex justify-between p-2 rounded-lg bg-muted/50 col-span-2">
-                        <span className="text-muted-foreground font-semibold">Total TTC</span>
-                        <span className="font-semibold text-emerald-600">{formatCurrency(String(scan.extracted.totalTTC), "TND")}</span>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+              <ScanVerifExtractedData extracted={scan.extracted} />
             )}
 
             <ScanVerifLinesTable
